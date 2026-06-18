@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gérer les catégories</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 20px; }
+        
+        /* Agrandissement du conteneur : max-width augmenté à 600px pour plus d'espace */
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        h2 { text-align: center; color: #2d3748; margin-bottom: 25px; }
+
+        /* Agrandissement des champs et boutons */
+        input { width: 100%; padding: 18px; margin: 15px 0; border: 2px solid #e2e8f0; border-radius: 15px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 18px; border: none; border-radius: 15px; background: #4a90e2; color: white; cursor: pointer; font-weight: bold; font-size: 16px; }
+        
+        /* Liste plus aérée */
+        .cat-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #edf2f7; font-size: 17px; }
+        .delete-btn { background: #e74c3c; padding: 10px 20px; font-size: 14px; width: auto; }
+        
+        .back-btn { background: #718096; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Gestion des Catégories</h2>
+    
+    <input type="text" id="newCat" placeholder="Nom de la nouvelle catégorie...">
+    <button onclick="ajouterCategorie()">+ Ajouter la catégorie</button>
+
+    <div id="listeCategories" style="margin-top: 25px;">Chargement...</div>
+    
+    <button class="back-btn" onclick="window.location.href='liste.html'">Retour à l'inventaire</button>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = { projectId: "mon-premier-projet-82f4c" };
+    initializeApp(firebaseConfig);
+    const db = getFirestore();
+
+    async function chargerListe() {
+        const querySnapshot = await getDocs(collection(db, "Categories"));
+        const liste = document.getElementById('listeCategories');
+        liste.innerHTML = '';
+        querySnapshot.forEach((doc) => {
+            liste.innerHTML += `
+                <div class="cat-item">
+                    <span>${doc.data().nom_categorie}</span>
+                    <button class="delete-btn" onclick="supprimer('${doc.id}')">Supprimer</button>
+                </div>`;
+        });
+    }
+
+    window.ajouterCategorie = async () => {
+        const nom = document.getElementById('newCat').value;
+        if (!nom) return alert("Veuillez entrer un nom");
+        await addDoc(collection(db, "Categories"), { nom_categorie: nom });
+        document.getElementById('newCat').value = '';
+        chargerListe();
+    };
+
+    window.supprimer = async (id) => {
+        if (confirm("Supprimer cette catégorie ?")) {
+            await deleteDoc(doc(db, "Categories", id));
+            chargerListe();
+        }
+    };
+
+    chargerListe();
+</script>
+</body>
+</html>

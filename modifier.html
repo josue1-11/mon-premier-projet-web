@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifier Produit</title>
+    <style>
+        body { font-family: sans-serif; background: #f4f7f6; padding: 10px; margin: 0; display: flex; justify-content: center; }
+        form { background: white; padding: 20px; border-radius: 20px; width: 100%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .preview-img { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; margin: 10px auto; display: block; border: 3px solid #e2e8f0; }
+        input, select, textarea { width: 100%; padding: 15px; margin: 8px 0; border: 2px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; color: white; font-size: 16px; }
+        .btn-save { background: #ecc94b; color: black; }
+        .btn-img { background: #718096; }
+        .btn-cancel { background: #a0aec0; }
+    </style>
+</head>
+<body>
+
+<form id="formModifier">
+    <h2 style="text-align:center">✏️ Modifier</h2>
+    <img id="preview" class="preview-img" src="" alt="Image">
+    <button type="button" class="btn-img" onclick="document.getElementById('fileInput').click()">📷 Changer l'image</button>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+    <input type="text" id="nom" placeholder="Nom" required>
+    <input type="text" id="categorie" placeholder="Catégorie" required>
+    <input type="text" id="marque" placeholder="Marque" required>
+    <input type="number" id="prix" placeholder="Prix" required>
+    
+    <select id="devise">
+        <option value="USD">USD</option>
+        <option value="CDF">CDF</option>
+    </select>
+
+    <textarea id="description" placeholder="Description" rows="3"></textarea>
+    
+    <button type="submit" class="btn-save" id="btnSave">ENREGISTRER</button>
+    <button type="button" class="btn-cancel" onclick="window.history.back()">Annuler</button>
+</form>
+
+<script type="module">
+    import { getFirestore, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+
+    const firebaseConfig = { projectId: "mon-premier-projet-82f4c" };
+    initializeApp(firebaseConfig);
+    const db = getFirestore();
+    
+    const data = JSON.parse(localStorage.getItem("produitSelectionne"));
+    let imageBase64 = data.image;
+
+    // Remplir les champs
+    document.getElementById('preview').src = data.image;
+    document.getElementById('nom').value = data.nom;
+    document.getElementById('categorie').value = data.categorie;
+    document.getElementById('marque').value = data.marque;
+    document.getElementById('prix').value = data.prix;
+    document.getElementById('devise').value = data.devise || "USD"; // Charge la devise existante
+    document.getElementById('description').value = data.description;
+
+    // Gestion image optimisée
+    document.getElementById('fileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const maxW = 600;
+                const scale = maxW / img.width;
+                canvas.width = maxW;
+                canvas.height = img.height * scale;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                imageBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                document.getElementById('preview').src = imageBase64;
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    document.getElementById('formModifier').onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSave');
+        btn.innerText = "Enregistrement...";
+        btn.disabled = true;
+
+        await updateDoc(doc(db, "Données_produit", data.id), {
+            nom: document.getElementById('nom').value,
+            categorie: document.getElementById('categorie').value,
+            marque: document.getElementById('marque').value,
+            prix: parseInt(document.getElementById('prix').value),
+            devise: document.getElementById('devise').value, // Sauvegarde la nouvelle devise
+            description: document.getElementById('description').value,
+            image: imageBase64
+        });
+
+        alert("Mis à jour avec succès !");
+        window.location.href = "liste.html";
+    };
+</script>
+</body>
+</html>

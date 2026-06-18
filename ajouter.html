@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrement Produit</title>
+    <style>
+        :root { --primary-color: #4a90e2; --success-color: #27ae60; --text-color: #333; }
+        
+        body { font-family: sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box; }
+        form { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h2 { text-align: center; margin-top: 0; }
+        
+        .circle-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; }
+        #preview-container { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--primary-color); background: #eef2f7; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 15px; }
+        .default-icon { color: #cbd5e0; font-size: 40px; }
+        #preview { width: 100%; height: 100%; object-fit: cover; display: none; }
+        
+        /* Boutons côte à côte */
+        .btn-group { display: flex; gap: 10px; width: 100%; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; color: white; transition: 0.3s; font-size: 14px; }
+        .btn-cam { background-color: var(--primary-color); }
+        .btn-gal { background-color: #718096; }
+
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #e2e8f0; border-radius: 12px; box-sizing: border-box; }
+        #submit-btn { background-color: var(--success-color); font-size: 16px; margin-top: 10px; width: 100%; }
+    </style>
+</head>
+<body>
+
+<form id="formProduit">
+    <h2>Nouveau Produit</h2>
+    
+    <div class="circle-container">
+        <div id="preview-container">
+            <span class="default-icon">📷</span>
+            <img id="preview" src="" alt="Aperçu">
+        </div>
+        
+        <div class="btn-group">
+            <input type="file" id="camInput" accept="image/*" capture="environment" style="display:none">
+            <button type="button" class="btn-cam" onclick="document.getElementById('camInput').click()">📸 Prendre</button>
+            <input type="file" id="galInput" accept="image/*" style="display:none">
+            <button type="button" class="btn-gal" onclick="document.getElementById('galInput').click()">📁 Galerie</button>
+        </div>
+    </div>
+
+    <select id="categorie" required>
+        <option value="">Chargement des catégories...</option>
+    </select>
+
+    <input type="text" id="marque" placeholder="Marque" required>
+    <input type="text" id="nom" placeholder="Nom du produit" required>
+    <input type="number" id="prix" placeholder="Prix" required>
+    
+    <select id="devise">
+        <option value="USD">USD</option>
+        <option value="CDF">CDF</option>
+    </select>
+    
+    <textarea id="description" placeholder="Description" rows="2"></textarea>
+    <button type="submit" id="submit-btn">ENREGISTRER LE PRODUIT</button>
+</form>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        projectId: "mon-premier-projet-82f4c"
+    };
+
+    initializeApp(firebaseConfig);
+    const db = getFirestore();
+    
+    // Chargement des catégories
+    async function chargerCategories() {
+        const catSelect = document.getElementById('categorie');
+        try {
+            const querySnapshot = await getDocs(collection(db, "Categories"));
+            catSelect.innerHTML = '<option value="">Choisir une catégorie</option>';
+            querySnapshot.forEach(doc => {
+                const cat = doc.data().nom_categorie;
+                catSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+            });
+        } catch (e) { catSelect.innerHTML = '<option value="Autre">Autre</option>'; }
+    }
+    chargerCategories();
+
+    // Gestion image
+    const preview = document.getElementById('preview');
+    const icon = document.querySelector('.default-icon');
+    let imageBase64 = null;
+
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 300; 
+                canvas.height = (img.height / img.width) * 300;
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                imageBase64 = canvas.toDataURL('image/jpeg', 0.5);
+                preview.src = imageBase64;
+                preview.style.display = 'block';
+                icon.style.display = 'none';
+            };
+        };
+        reader.readAsDataURL(file);
+    }
+
+    document.getElementById('camInput').addEventListener('change', handleFile);
+    document.getElementById('galInput').addEventListener('change', handleFile);
+
+    document.getElementById('formProduit').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!imageBase64) return alert("Veuillez choisir une image !");
+        
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true; btn.innerText = "Enregistrement...";
+
+        try {
+            await addDoc(collection(db, "Données_produit"), {
+                categorie: document.getElementById('categorie').value,
+                marque: document.getElementById('marque').value,
+                nom: document.getElementById('nom').value,
+                prix: parseInt(document.getElementById('prix').value),
+                devise: document.getElementById('devise').value,
+                description: document.getElementById('description').value,
+                image: imageBase64
+            });
+            alert("Produit enregistré !");
+            window.location.href = "liste.html";
+        } catch (err) { alert("Erreur : " + err.message); btn.disabled = false; }
+    });
+</script>
+</body>
+</html>
