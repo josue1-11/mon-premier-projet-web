@@ -9,17 +9,14 @@
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 15px; margin: 0; }
         h2 { text-align: center; color: #2d3748; margin-bottom: 20px; }
         
-        /* Conteneur des boutons d'administration */
         .admin-zone { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .btn-admin { padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; color: white; text-decoration: none; text-align: center; }
         #btnAjouter { background: #27ae60; }
         #btnGestionCat { background: #e67e22; }
 
-        /* Recherche et filtres */
         .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         input, select { padding: 14px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 16px; width: 100%; box-sizing: border-box; }
         
-        /* Tableau stylé */
         .table-container { background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
         table { width: 100%; border-collapse: collapse; }
         th { background: #edf2f7; color: #4a5568; padding: 15px 8px; font-size: 13px; text-transform: uppercase; }
@@ -76,14 +73,12 @@
         
         allProducts.sort((a, b) => a.nom.localeCompare(b.nom));
         
-        // Alimenter le filtre
         const categories = [...new Set(allProducts.map(p => p.categorie))];
         const catFilter = document.getElementById('catFilter');
         categories.forEach(cat => {
             if(cat) catFilter.innerHTML += `<option value="${cat}">${cat}</option>`;
         });
 
-        // Vérification des droits administrateur
         if (localStorage.getItem("userRole") === "admin") {
             document.getElementById("btnAjouter").style.display = "block";
             document.getElementById("btnGestionCat").style.display = "block";
@@ -91,27 +86,40 @@
         renderTable(allProducts);
     }
 
-    function renderTable(data) {
+    // Fonction corrigée pour éviter l'erreur de syntaxe
+    window.renderTable = function(data) {
         const tbody = document.getElementById('tbody');
         tbody.innerHTML = data.map((p, i) => `
-            <tr onclick='localStorage.setItem("produitSelectionne", JSON.stringify(${JSON.stringify(p)})); window.location.href="detail.html";'>
+            <tr onclick='selectionnerProduit(${i})'>
                 <td>${i + 1}</td>
                 <td><strong>${p.nom}</strong></td>
                 <td>${p.marque || '-'}</td>
                 <td>${p.categorie || '-'}</td>
             </tr>
         `).join('');
-    }
+    };
 
-    function filterProducts() {
+    // Nouvelle fonction de sélection sécurisée
+    window.selectionnerProduit = (index) => {
+        // On récupère le produit dans le tableau filtré ou global
+        const productToSelect = document.getElementById('searchInput').value || document.getElementById('catFilter').value 
+                                ? getFilteredData() : allProducts;
+        localStorage.setItem("produitSelectionne", JSON.stringify(productToSelect[index]));
+        window.location.href = "detail.html";
+    };
+
+    function getFilteredData() {
         const searchTerm = document.getElementById('searchInput').value.toLowerCase();
         const category = document.getElementById('catFilter').value;
-        const filtered = allProducts.filter(p => {
+        return allProducts.filter(p => {
             const matchesName = p.nom.toLowerCase().includes(searchTerm);
             const matchesCat = category === "" || p.categorie === category;
             return matchesName && matchesCat;
         });
-        renderTable(filtered);
+    }
+
+    function filterProducts() {
+        renderTable(getFilteredData());
     }
 
     document.getElementById('searchInput').oninput = filterProducts;
